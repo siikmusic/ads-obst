@@ -42,8 +42,6 @@ def closer_distance(pivot, p1, p2):
 def kdtree_closest_point(root, point, depth=0):
     if root is None:
         return None
-    if root['point'].value == point.value:
-        return None
 
     axis = depth % 2
 
@@ -265,43 +263,55 @@ def main():
              ([3, 7], [3, 8]),
              ]
 
-    #edges = loadData()
+    # edges = loadData()
     empty_set, string_edges = parse_data(edges)
     graph = createGraph(empty_set, string_edges)
+    graph_copy = graph.copy()
     city_list, graph = get_cities_from_graph(graph)
     city_list = sorted(city_list)
     root = build_kdtree(graph.values())
-    closest_points = get_closest_points_graph(graph, root)
-    #print(kdtree_closest_point(root, graph['2,6']).value)
+
     routes = []
-    points_travelled = []
+
     print(city_list)
+    print(graph.values())
+    connected_cities = {}
     for i in range(len(city_list)):
+        connected_cities[i] = False
+    for i in range(len(city_list) - 1):
         current_city = []
+        root = build_kdtree(graph.values())
         for j in range(len(city_list[i])):
             point = city_list[i][j]
-            if closest_points.get(point):
-                closest, distance_set = closest_points[point]
-                current_city.append(((point, closest), distance_set))
-                if j == len(city_list[i]) - 1:
-                    current_city = sorted(current_city, key=lambda x: x[1], reverse=False)
-                    for place in current_city:
-                        if place[0][1] not in points_travelled:
-                            routes.append(place[0])
-                            points_travelled = city_list[i] + points_travelled
-                            print("Picked: ", place[0],place[1], points_travelled, point)
-                            break
-                        print(place)
-                    print(current_city, city_list[i])
+            closest_point = kdtree_closest_point(root, graph[point])
+            if closest_point is None:
+                print(graph[point].value)
+                del graph[point]
+                continue
+
+            distance_points = distance(closest_point, graph[point])
+            # print((point, closest_point.value), distance_points)
+            current_city.append(((point, closest_point.value), distance_points))
+            print(graph[point].value)
+            del graph[point]
+
+        current_city = sorted(current_city, key=lambda x: x[1], reverse=False)
+        print(current_city)
+        cheapest = current_city[0][1]
+        for route in current_city:
+            if route[1] == cheapest:
+                routes.append(route[0])
+
     for route in routes:
         new_route = stringToTuple(route)
         edges.append(new_route)
+    print(edges)
     empty_set, string_edges = parse_data(edges)
     graph = createGraph(empty_set, string_edges)
     unreachanble = getUnreachableNodes(graph, string_edges[0][0], empty_set)
     print(len(routes))
     print(routes)
-    print(len(unreachanble))
+    print(unreachanble)
     save_data(routes)
 
 
