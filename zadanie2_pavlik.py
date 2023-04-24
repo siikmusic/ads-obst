@@ -3,14 +3,30 @@ import math
 import itertools
 import time
 from operator import itemgetter
+from itertools import chain
+from collections import Counter
+from itertools import groupby
+import random
+
+
+def choice_excluding(lst, exception):
+    possible_choices = [v for v in lst if v != exception]
+    return random.choice(possible_choices)
+
+
+def all_equal(iterable):
+    g = groupby(iterable)
+    return next(g, True) and not next(g, False)
 
 
 class uf_ds:
     parent_node = {}
+    rank = {}
 
     def make_set(self, u):
         for i in u:
             self.parent_node[i] = i
+            self.rank[i] = 0
 
     def op_find(self, k):
         if self.parent_node[k] == k:
@@ -22,9 +38,8 @@ class uf_ds:
         y = self.op_find(b)
         self.parent_node[x] = y
 
-
 def display(u, data):
-    print([data.op_find(i) for i in u])
+    return [data.op_find(i) for i in u]
 
 
 def build_kdtree(points, depth=0):
@@ -93,6 +108,7 @@ def kdtree_closest_point(root, point, depth=0):
                                )
     return best
 
+
 def distance_coordinates(point1, point2):
     point1, point2 = stringToTuple((point1, point2))
     x1, y1 = point1
@@ -101,6 +117,7 @@ def distance_coordinates(point1, point2):
     dx = x1 - x2
     dy = y1 - y2
     return math.sqrt(dx * dx + dy * dy)
+
 
 def distance(point1, point2):
     x1, y1 = point1.getTuple()
@@ -293,20 +310,9 @@ def main():
              ([0, 6], [0, 7]),
              ([3, 7], [3, 8]),
              ]
-    """
-    edges = [([1, 2], [2, 2]),
-             ([2, 2], [2, 4]),
-             ([2, 7], [2, 9]),
-             ([4, 1], [4, 2]),
-             ([4, 5], [4, 6]),
-             ([2, 7], [1, 7]),
-             ([6, 0], [8, 0]),
-             ([6, 3], [6, 4]),
-             ([6, 7], [8, 7]),
-             ([10, 3], [10, 5]),
 
-             ]
-    """
+
+
     edges = loadData()
 
     empty_set, string_edges = parse_data(edges)
@@ -314,55 +320,93 @@ def main():
 
     city_list, graph = get_cities_from_graph(graph)
     city_list = sorted(city_list)
-
+    city_indices = [x for x in range(len(city_list))]
+    # print(city_indices)
     routes = []
     union_find = uf_ds()
     union_find.make_set(empty_set)
-    display(empty_set, union_find)
     for i in city_list:
         for j in range(len(i) - 1):
             union_find.op_union(i[j], i[j + 1])
-    display(empty_set, union_find)
-    not_connected = []
+    # print(display(empty_set,union_find))
     root = build_kdtree(graph.values())
-    points_traversed = {}
 
-    print(routes)
+    new_edges = []
 
-    for i in range(len(city_list) - 1):
-        current_city = []
-        root = build_kdtree(graph.values())
+    for i in range(len(city_list)):
         for j in range(len(city_list[i])):
             point = city_list[i][j]
             closest_point = kdtree_closest_point(root, graph[point])
-            if closest_point is None:
-                del graph[point]
-                continue
-
             distance_points = distance(closest_point, graph[point])
-            current_city.append(((point, closest_point.value), distance_points))
-            del graph[point]
+            new_edges.append((point, closest_point.value, distance_points))
 
-        current_city = sorted(current_city, key=lambda x: x[1], reverse=False)
+    new_edges = sorted(new_edges, key=lambda x: x[2], reverse=False)
+    print(new_edges)
+    print(len(new_edges))
+    cost = 0
+    edge_counter = 0
 
-        cheapest = current_city[0][1]
+    while edge_counter < len(city_list) and len(new_edges) > 0:
+        u, v, w = new_edges.pop(0)
+        if union_find.op_find(u) != union_find.op_find(v):
+            union_find.op_union(u, v)
+            edge_counter += 1
+            cost += w
+            routes.append((u, v))
 
-        for route in current_city:
-            if union_find.op_find(route[0][0]) != union_find.op_find(route[0][1]):
-                closest_point = kdtree_closest_point(root, graph[route[0][1]])
-                if distance(closest_point, graph[route[0][1]]) >= cheapest:
-                    union_find.op_union(union_find.op_find(route[0][0]), union_find.op_find(route[0][1]))
-                    routes.append(route[0])
-                else:
-                    not_connected.append(route[0])
-    print(len(not_connected))
-    for node in not_connected:
-        if union_find.op_find(node[0]) != union_find.op_find(node[1]):
-            union_find.op_union(union_find.op_find(node[0]), union_find.op_find(node[1]))
-            routes.append(node)
-    display(empty_set, union_find)
+    """for edge in new_edges:
+        if union_find.op_find(edge[0]) != union_find.op_find(edge[1]):
+            routes.append((edge[0], edge[1]))
+            cost += edge[2]
+            union_find.op_union(edge[0], edge[1])
+    """
+    print(sorted(routes))
+    print(cost)
+    print(all_equal(display(empty_set, union_find)))
+    """while len(next_cities) > 0:
+        for city in next_cities:
+            city_distances = []
+            print(len(city))
+            for point in city:
+                closest = kdtree_closest_point(root, graph[point])
+                dist = distance(closest, graph[point])
+                city_distances.append(((point, closest.value), dist))
+            city_distances = sorted(city_distances, key=lambda x: x[1], reverse=False)
+            #print(city_distances, city)
 
+            min_distance = city_distances[0][1]
+            for min_city in city_distances:
 
+                if union_find.op_find(min_city[0][0]) != union_find.op_find(min_city[0][1]):
+                    # print(union_find.op_find(min_city[0][0]), union_find.op_find(min_city[0][1]))
+
+                    union_find.op_union(union_find.op_find(min_city[0][0]), union_find.op_find(min_city[0][1]))
+                    next_city = graph[min_city[0][1]].city
+                    this_city = graph[min_city[0][0]].city
+                    graph[min_city[0][1]].city = next_city + this_city
+                    if this_city in all_cities:
+                        all_cities.remove(this_city)
+                    if next_city in all_cities:
+                        all_cities.remove(next_city)
+                    next_cities.append(next_city)
+                    routes.append(min_city[0])
+            print(len(city_distances))
+            next_cities.remove(city)
+
+            union_array = display(empty_set, union_find)
+            if len(next_cities) == 0 and not all_equal(union_array):
+                print(len(all_cities))
+                most_common = (Counter(union_array)).most_common()[0]
+                random_element = all_cities[0]
+                #print("random: ",random_element, most_common[0])
+                # print(graph[random_element].city, union_array, random_element)
+                next_cities.append(random_element)
+            print(len(next_cities))
+            print(len(routes) - len(city_list), " routes remaining")
+            #print(city_distances, routes)
+            #print()
+    print("UNEIGFOEGW")
+    """
     for route in routes:
         new_route = stringToTuple(route)
         edges.append(new_route)
@@ -372,11 +416,8 @@ def main():
     total_distance = 0
     for route in routes:
         total_distance += distance_coordinates(route[0], route[1])
-    print(routes)
     print(total_distance)
     save_data(routes)
-    """
-    """
 
 
 if __name__ == "__main__":
