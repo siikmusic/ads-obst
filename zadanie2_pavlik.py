@@ -8,6 +8,9 @@ from collections import Counter
 from itertools import groupby
 import random
 import heapq
+from pprint import pprint
+import numpy as np
+from sklearn.neighbors import KDTree
 
 
 def choice_excluding(lst, exception):
@@ -79,7 +82,7 @@ def closer_distance(pivot, p1, p2):
     return p1
 
 
-def kdtree_closest_point(root, point, exclude = None, depth=0):
+def kdtree_closest_point(root, point, exclude=None, depth=0):
     if root is None:
         return None
 
@@ -298,30 +301,32 @@ def get_closest_points_graph(graph, root):
 def shortest_path(graph, city_list, union_find):
     new_edges = []
     routes = []
+    start_time = time.time()
     for i in range(len(city_list)):
-        root = build_kdtree(graph.values())
+        tree = build_kdtree([graph[n] for n in city_list[i]])
+        
+        for j in range(i + 1, len(city_list)):
 
-        for j in range(len(city_list[i])):
+            for point in city_list[j]:
+                nearest = kdtree_closest_point(tree, graph[point])
+                distance = distance_coordinates(point, nearest.value)
+                new_edges.append((point, nearest.value, distance))
 
-            point = city_list[i][j]
-            closest_point_current = kdtree_closest_point(root, graph[point])
-            if closest_point_current is None:
-                del graph[point]
-                continue
-            distance_points = distance(closest_point_current, graph[point])
-            new_edges.append((point, closest_point_current.value, distance_points))
-
-            del graph[point]
+    end_time = time.time()
+    print("All paths time: ", end_time - start_time)
     new_edges = sorted(new_edges, key=lambda x: x[2])
     cost = 0
-    min_cost = 0
+    start_time = time.time()
 
-    print(min_cost)
     for edge in new_edges:
+        if len(routes) == len(city_list) -1:
+            break
         if union_find.op_find(edge[0]) != union_find.op_find(edge[1]):
             routes.append((edge[0], edge[1]))
             cost += edge[2]
             union_find.op_union(edge[0], edge[1])
+    end_time = time.time()
+
     return cost, routes
 
 
@@ -375,7 +380,7 @@ def main():
 
     cost, routes = shortest_path(graph, city_list, union_find)
     end_time = time.time()
-    print("Running time: ", start_time- end_time)
+    print("Running time: ", start_time - end_time)
     print(sorted(routes))
     print(cost)
     print(all_equal(display(vertices, union_find)))
