@@ -1,15 +1,7 @@
-import copy
 import math
-import itertools
 import time
-from operator import itemgetter
-from itertools import chain
-from collections import Counter
 from itertools import groupby
 import random
-import heapq
-from pprint import pprint
-import numpy as np
 from sklearn.neighbors import KDTree
 
 
@@ -46,86 +38,6 @@ class uf_ds:
 def display(u, data):
     return [data.op_find(i) for i in u]
 
-
-def build_kdtree(points, depth=0):
-    n = len(points)
-    if n <= 0:
-        return None
-    axis = depth % 2
-    if axis == 0:
-        sorted_points = sorted(points, key=lambda point: point.x)
-    else:
-        sorted_points = sorted(points, key=lambda point: point.y)
-    middle = n // 2
-    return {
-        'point': sorted_points[middle],
-        'left': build_kdtree(sorted_points[:middle], depth=depth + 1),
-        'right': build_kdtree(sorted_points[middle + 1:], depth=depth + 1)
-    }
-
-
-def closer_distance(pivot, p1, p2):
-    if p1 is None:
-        return p2
-    if p2 is None:
-        return p1
-
-    d1 = distance(pivot, p1)
-    d2 = distance(pivot, p2)
-
-    if d1 < d2:
-        if p1.value not in pivot.city:
-            return p1
-        return p2
-    if p2.value not in pivot.city:
-        return p2
-    return p1
-
-
-def kdtree_closest_point(root, point, exclude=None, depth=0):
-    if root is None:
-        return None
-
-    axis = depth % 2
-
-    point_axis = point.y
-    root_axis = root['point'].y
-    if axis == 0:
-        point_axis = point.x
-        root_axis = root['point'].x
-
-    if point_axis < root_axis:
-        next_branch = root['left']
-        opposite_branch = root['right']
-    else:
-        next_branch = root['right']
-        opposite_branch = root['left']
-
-    best = closer_distance(point,
-                           kdtree_closest_point(next_branch, point, exclude=exclude, depth=depth + 1),
-                           root['point']
-                           )
-    if exclude is not None:
-        if best.value == exclude.value:
-            best = closer_distance(point,
-                                   kdtree_closest_point(opposite_branch, point, exclude=exclude, depth=depth + 1),
-                                   root['point']
-                                   )
-
-    if distance(point, best) > abs(point_axis - root_axis):
-        best = closer_distance(point,
-                               kdtree_closest_point(opposite_branch, point, exclude=exclude, depth=depth + 1),
-                               best
-                               )
-        if exclude is not None:
-            if best.value == exclude.value:
-                best = closer_distance(point,
-                                       kdtree_closest_point(next_branch, point, exclude=exclude, depth=depth + 1),
-                                       best
-                                       )
-    return best
-
-
 def distance_coordinates(point1, point2):
     point1, point2 = stringToTuple((point1, point2))
     x1, y1 = point1
@@ -145,31 +57,13 @@ def distance(point1, point2):
     return math.sqrt(dx * dx + dy * dy)
 
 
-def closest_point(all_points, new_point, unreachable):
-    best_point = None
-    best_distance = float('inf')
-    for current_point in all_points:
-        if current_point.value == new_point.value:
-            continue
-        current_distance = distance(new_point, current_point)
-        if current_distance < best_distance:
-            if current_point.value in unreachable and not current_point.connected:
-                best_distance = current_distance
-                best_point = current_point
-
-    return best_point, best_distance
-
-
 class Node:
     def __init__(self, tup):
         self.value = tup
         self.x, self.y = tup.split(",")
         self.x = int(self.x)
         self.y = int(self.y)
-        self.connected = False
-        self.connectedNode = None
         self.connections = []
-        self.connectedDistance = float('inf')
         self.city = None
 
     def print(self):
@@ -288,28 +182,20 @@ def get_cities_from_graph(graph):
     return city_list, graph
 
 
-def get_closest_points_graph(graph, root):
-    closest_points = {}
-    for i in graph:
-        closest = kdtree_closest_point(root, graph[i])
-        if closest:
-            # print(i, closest.value, distance(closest, graph[i]))
-            closest_points[i] = (closest.value, distance(closest, graph[i]))
-    return closest_points
-
-
 def shortest_path(graph, city_list, union_find):
     new_edges = []
     routes = []
     start_time = time.time()
     for i in range(len(city_list)):
-        tree = build_kdtree([graph[n] for n in city_list[i]])
-        
+        edges_current =[graph[n] for n in city_list[i]]
+        tree = KDTree([(edges_current[i].x, edges_current[i].y) for i in range(len(edges_current))])
+
         for j in range(i + 1, len(city_list)):
 
             for point in city_list[j]:
-                nearest = kdtree_closest_point(tree, graph[point])
-                distance = distance_coordinates(point, nearest.value)
+                distance, nearest = tree.query([[graph[point].x, graph[point].y]], k=1)
+                distance = distance[0]
+                nearest = edges_current[nearest[0][0]]
                 new_edges.append((point, nearest.value, distance))
 
     end_time = time.time()
