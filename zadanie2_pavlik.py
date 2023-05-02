@@ -255,32 +255,38 @@ def main():
              ([3, 7], [3, 8]),
              ]
     start_time = time.time()
-    edges = loadData()
 
+    edges = loadData()
+    end_time = time.time()
+    print("loaded data ", end_time - start_time)
     vertices, string_edges = parse_data(edges)
+    end_time = time.time()
+
+    print("parsed data ", end_time - start_time)
     graph = createGraph(vertices, string_edges)
+    end_time = time.time()
+
+    print("created graph ", end_time - start_time)
 
     city_list, graph = get_cities_from_graph(graph)
+    end_time = time.time()
+
+    print("got cities graph ", end_time - start_time)
 
     union_find = create_uf(vertices, city_list)
+    end_time = time.time()
+
+    print("created union find ", end_time - start_time)
 
     cost, routes = shortest_path(graph, city_list, union_find)
-    end_time = time.time()
-    print("Running time: ", start_time - end_time)
     print(sorted(routes))
-    print(cost)
-    print(all_equal(display(vertices, union_find)))
+    print("Minimal distance is: ", cost)
+    end_time = time.time()
+    print("Running time: ", end_time - start_time)
 
     for route in routes:
         new_route = stringToTuple(route)
         edges.append(new_route)
-    vertices, string_edges = parse_data(edges)
-    graph = createGraph(vertices, string_edges)
-    unreachanble = getUnreachableNodes(graph, string_edges[0][0], vertices)
-    print(len(unreachanble))
-    print(len(routes))
-    print(cost)
-    save_data(routes)
 
 
 if __name__ == "__main__":
