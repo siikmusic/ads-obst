@@ -1,13 +1,7 @@
 import math
 import time
-from itertools import groupby
-import random
+from itertools import groupby, chain
 from sklearn.neighbors import KDTree
-
-
-def choice_excluding(lst, exception):
-    possible_choices = [v for v in lst if v != exception]
-    return random.choice(possible_choices)
 
 
 def all_equal(iterable):
@@ -37,6 +31,7 @@ class uf_ds:
 
 def display(u, data):
     return [data.op_find(i) for i in u]
+
 
 def distance_coordinates(point1, point2):
     point1, point2 = stringToTuple((point1, point2))
@@ -154,16 +149,8 @@ def save_data(input_array):
 
 
 def parse_data(edges):
-    empty_set = []
-    string_edges = []
-    for edge in edges:
-        node1, node2 = edgeToNodeString(edge)
-        if node1 not in empty_set:
-            empty_set.append(node1)
-        if node2 not in empty_set:
-            empty_set.append(node2)
-
-        string_edges.append((node1, node2))
+    string_edges = [(edgeToNodeString(edge)) for edge in edges]
+    empty_set = list(set(chain.from_iterable(string_edges)))
     return empty_set, string_edges
 
 
@@ -185,33 +172,25 @@ def get_cities_from_graph(graph):
 def shortest_path(graph, city_list, union_find):
     new_edges = []
     routes = []
-    start_time = time.time()
     for i in range(len(city_list)):
         edges_current =[graph[n] for n in city_list[i]]
         tree = KDTree([(edges_current[i].x, edges_current[i].y) for i in range(len(edges_current))])
-
         for j in range(i + 1, len(city_list)):
-
             for point in city_list[j]:
                 distance, nearest = tree.query([[graph[point].x, graph[point].y]], k=1)
                 distance = distance[0]
                 nearest = edges_current[nearest[0][0]]
                 new_edges.append((point, nearest.value, distance))
-
-    end_time = time.time()
-    print("All paths time: ", end_time - start_time)
     new_edges = sorted(new_edges, key=lambda x: x[2])
     cost = 0
-    start_time = time.time()
 
     for edge in new_edges:
-        if len(routes) == len(city_list) -1:
+        if len(routes) == len(city_list) - 1:
             break
         if union_find.op_find(edge[0]) != union_find.op_find(edge[1]):
             routes.append((edge[0], edge[1]))
             cost += edge[2]
             union_find.op_union(edge[0], edge[1])
-    end_time = time.time()
 
     return cost, routes
 
@@ -226,37 +205,10 @@ def create_uf(vertices, city_list):
 
 
 def main():
-    edges = [([1, 9], [3, 8]),
-             ([3, 8], [3, 9]),
-             ([4, 6], [4, 7]),
-             ([6, 7], [6, 8]),
-             ([7, 5], [7, 6])]
-
-    edges = [([1, 3], [1, 4]),
-             ([3, 4], [3, 3]),
-             ([4, 3], [4, 2]),
-             ([2, 6], [2, 7]),
-             ([2, 7], [1, 7]),
-             ([1, 9], [2, 9]),
-             ([4, 2], [5, 2]),
-             ([5, 2], [6, 2]),
-             ([6, 2], [6, 3]),
-             ([6, 3], [6, 4]),
-             ([6, 4], [6, 5]),
-             ([6, 5], [6, 6]),
-             ([6, 6], [6, 7]),
-             ([6, 7], [5, 7]),
-             ([6, 7], [6, 8]),
-             ([5, 7], [5, 6]),
-             ([8, 2], [8, 3]),
-             ([8, 6], [8, 7]),
-             ([8, 8], [8, 9]),
-             ([0, 6], [0, 7]),
-             ([3, 7], [3, 8]),
-             ]
     start_time = time.time()
 
     edges = loadData()
+
     end_time = time.time()
     print("loaded data ", end_time - start_time)
     vertices, string_edges = parse_data(edges)
@@ -279,15 +231,11 @@ def main():
     print("created union find ", end_time - start_time)
 
     cost, routes = shortest_path(graph, city_list, union_find)
-    print(sorted(routes))
-    print("Minimal distance is: ", cost)
+    print("Minimal distance is: ", cost[0])
     end_time = time.time()
     print("Running time: ", end_time - start_time)
 
-    for route in routes:
-        new_route = stringToTuple(route)
-        edges.append(new_route)
-
+    save_data(routes)
 
 if __name__ == "__main__":
     main()
